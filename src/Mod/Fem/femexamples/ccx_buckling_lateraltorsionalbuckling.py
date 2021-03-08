@@ -1,6 +1,7 @@
-
+# ***************************************************************************
 # *   Copyright (c) 2019 Bernd Hahnebach <bernd@bimstatik.org>              *
-# *   Copyright (c) 2020 Sudhanshu Dubey <sudhanshu.thethunder@gmail.com    *
+# *   Copyright (c) 2020 Sudhanshu Dubey <sudhanshu.thethunder@gmail.com>   *
+# *   Copyright (c) 2021 Tobias Vaara Spiro <t@vaara.se>                    *
 # *                                                                         *
 # *   This file is part of the FreeCAD CAx development system.              *
 # *                                                                         *
@@ -35,13 +36,15 @@ import ObjectsFem
 
 mesh_name = "Mesh"  # needs to be Mesh to work with unit tests
 
-# Steel H-profile example HEA300
+# Steel H-profile example HEA300, in millimeter.
 b = 290  # Width of flanges
 t = 14  # Thickness of flanges
 h = 300  # Total height of beam
 d = 8  # Thickness of web
-l = 4000  # Length of beam
+l = 8000  # Length of beam
 
+# Distributed load on top flange(Newton).
+force_load = 200000.0 #Equivalent to 25kN/m line load.
 
 def addbox(docxx, height, width, length, x, y, z):
     box_obj = docxx.addObject('Part::Box', 'Box')
@@ -102,7 +105,7 @@ def setup_base(doc=None, solvertype="ccxtools"):
     material_object = analysis.addObject(ObjectsFem.makeMaterialSolid(doc, "MechanicalMaterial"))[0]
     mat = material_object.Material
     mat["Name"] = "Steel-Generic"
-    mat["YoungsModulus"] = "200000 MPa"
+    mat["YoungsModulus"] = "210000 MPa"
     mat["PoissonRatio"] = "0.30"
     mat["Density"] = "7900 kg/m^3"
     material_object.Material = mat
@@ -152,7 +155,7 @@ def setup(doc=None, solvertype="ccxtools"):
         )
     if solvertype == "calculix" or solvertype == "ccxtools":
         solver_object.SplitInputWriter = False
-        solver_object.AnalysisType = "buckling"  # <---
+        solver_object.AnalysisType = "buckling"
         #solver_object.BucklingFactor = "2"
         solver_object.GeometricalNonlinearity = "linear"
         solver_object.ThermoMechSteadyState = False
@@ -161,7 +164,7 @@ def setup(doc=None, solvertype="ccxtools"):
 
     ## displacement constraint
     displacement_constraint = ObjectsFem.makeConstraintDisplacement(doc, "FemConstraintDisplacement")
-    displacement_constraint.References = [(doc.HEA300, ("Face12"))]
+    displacement_constraint.References = [(doc.HEA300, ("Face12", "Face4"))]
     displacement_constraint.zFix = True
     displacement_constraint.zFree = False
     displacement_constraint.yFix = True
@@ -169,7 +172,7 @@ def setup(doc=None, solvertype="ccxtools"):
     analysis.addObject(displacement_constraint)
 
     displacement_constraint2 = ObjectsFem.makeConstraintDisplacement(doc, "FemConstraintDisplacement2")
-    displacement_constraint2.References = [(doc.HEA300, ("Face4", "Face10", "Face1"))]
+    displacement_constraint2.References = [(doc.HEA300, ("Edge6"))]
 
     displacement_constraint2.xFix = True
     displacement_constraint2.xFree = False
@@ -178,7 +181,7 @@ def setup(doc=None, solvertype="ccxtools"):
     ## force_constraint
     force_constraint = ObjectsFem.makeConstraintForce(doc, "FemConstraintForce")
     force_constraint.References = [(doc.HEA300, "Face15")]
-    force_constraint.Force = 100000.0
+    force_constraint.Force = force_load
     force_constraint.Reversed = True
     analysis.addObject(force_constraint)
 
